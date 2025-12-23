@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quran Player</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --text: #f8fafc;
+    --card: #1e293b;
+  }
+  body.light {
+    --bg: #f8fafc;
+    --text: #0f172a;
+    --card: #e5e7eb;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+    padding: 40px;
+    transition: 0.3s;
+  }
+  button {
+    padding: 8px 15px;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
+  select {
+    padding: 10px;
+    margin: 10px;
+    font-size: 16px;
+  }
+  audio {
+    width: 80%;
+    margin-top: 20px;
+  }
+  #ayahContainer {
+    margin-top: 30px;
+    text-align: right;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .ayah {
+    background: var(--card);
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+  }
+  .arabic {
+    font-size: 24px;
+    direction: rtl;
+  }
+  .english {
+    font-size: 16px;
+    color: #cbd5e1;
+    text-align: left;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<button id="themeToggle">🌙 Dark Mode</button>
+<h1>📖 Quran Audio Player</h1>
+
+<div class="controls">
+  <select id="surahSelect"></select>
+
+  <select id="reciterSelect">
+    <option value="ar.alafasy">Mishary Rashid Al-Afasy</option>
+    <option value="ar.abdurrahmaansudais">Abdurrahman Al-Sudais</option>
+    <option value="ar.saoodshuraym">Saood Ash-Shuraym</option>
+    <option value="ar.husary">Mahmoud Al-Husary</option>
+    <option value="ar.minshawi">Mohamed Al-Minshawi</option>
+    <option value="ar.mahermuaiqly">Maher Al-Muaiqly</option>
+  </select>
+</div>
+
+<audio id="audioPlayer" controls></audio>
+<div id="ayahContainer"></div>
+
+<script>
+const surahSelect = document.getElementById("surahSelect");
+const reciterSelect = document.getElementById("reciterSelect");
+const audioPlayer = document.getElementById("audioPlayer");
+const ayahContainer = document.getElementById("ayahContainer");
+const themeBtn = document.getElementById("themeToggle");
+
+// Load Surah list
+fetch("https://api.alquran.cloud/v1/surah")
+  .then(res => res.json())
+  .then(data => {
+    data.data.forEach(surah => {
+      const option = document.createElement("option");
+      option.value = surah.number;
+      option.textContent = `${surah.number}. ${surah.englishName}`;
+      surahSelect.appendChild(option);
+    });
+  });
+
+// Play Surah & load text
+function playSurah() {
+  const surah = surahSelect.value;
+  const reciter = reciterSelect.value;
+  audioPlayer.src = `https://api.alquran.cloud/v1/surah/${surah}/${reciter}`;
+  audioPlayer.play();
+
+  ayahContainer.innerHTML = "Loading...";
+
+  Promise.all([
+    fetch(`https://api.alquran.cloud/v1/surah/${surah}/ar`).then(r => r.json()),
+    fetch(`https://api.alquran.cloud/v1/surah/${surah}/en.asad`).then(r => r.json())
+  ]).then(([ar, en]) => {
+    ayahContainer.innerHTML = "";
+    ar.data.ayahs.forEach((ayah, index) => {
+      const div = document.createElement("div");
+      div.className = "ayah";
+      div.innerHTML = `
+        <div class="arabic">${ayah.text}</div>
+        <div class="english">${en.data.ayahs[index].text}</div>
+      `;
+      ayahContainer.appendChild(div);
+    });
+  });
+}
+
+surahSelect.addEventListener("change", playSurah);
+reciterSelect.addEventListener("change", playSurah);
+
+// Dark/Light Mode Toggle
+themeBtn.addEventListener("click", () => {
+  document.body.classList.toggle("light");
+  themeBtn.textContent = document.body.classList.contains("light")
+    ? "🌞 Light Mode"
+    : "🌙 Dark Mode";
+});
+</script>
+</body>
+</html>
